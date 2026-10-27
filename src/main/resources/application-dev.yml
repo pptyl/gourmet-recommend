@@ -1,0 +1,33 @@
+# 开发环境：H2 内存数据库，无需安装 MySQL 即可启动
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:gourmet;MODE=MySQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  data:
+    redis:
+      # 本机开发默认连接虚拟机 Redis（单密码模式，无需用户名）
+      # 生产/他人机器请用环境变量覆盖：REDIS_HOST / REDIS_PORT / REDIS_USERNAME / REDIS_PASSWORD
+      host: ${REDIS_HOST:192.168.31.63}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+      schema-locations: classpath:db/h2-schema.sql
+      data-locations: classpath:db/h2-data.sql
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+  level:
+    com.gourmet: debug

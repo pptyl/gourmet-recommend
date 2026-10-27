@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>领券中心 · 寻味</title>
+  <link rel="stylesheet" href="/css/app.css?v=20261028">
+</head>
+<body>
+<header id="nav" class="site"></header>
+
+<div class="container" style="padding-top:22px">
+  <section class="coupon-hero">
+    <div>
+      <h1>领券中心</h1>
+      <p>全平台商家优惠券集中领取，先到先得，每人限领一张</p>
+    </div>
+    <a class="btn btn-ghost" href="/profile.html?tab=coupons">我的券包</a>
+  </section>
+
+  <div class="tabs" id="stateTabs" style="margin-top:18px">
+    <button data-state="" class="active">全部</button>
+    <button data-state="1">可领取</button>
+    <button data-state="0">即将开始</button>
+    <button data-state="2">已结束</button>
+  </div>
+
+  <div class="grid coupons" id="list"></div>
+  <div class="pager" id="pager"></div>
+</div>
+
+<footer class="site">
+  <div class="container row wrap">
+    <span>© 2026 寻味 · 美食推荐系统</span>
+    <span class="spacer"></span>
+    <a class="muted" href="/index.html">首页</a><span class="muted">·</span>
+    <a class="muted" href="/notes.html">探店笔记</a><span class="muted">·</span>
+    <a class="muted" href="/swagger-ui.html" target="_blank">接口文档</a>
+  </div>
+</footer>
+
+<script src="/js/api.js?v=20261028"></script>
+<script src="/js/ui.js?v=20261028"></script>
+<script src="/js/nav.js?v=20261028"></script>
+<script src="/js/coupons.js?v=20261028"></script>
+</body>
+</html>

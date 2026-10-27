@@ -1,0 +1,24 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### 上传文件目录 ###
+uploads/
+
+### 其它 ###
+*.log
+logs/
+.DS_Store
+
+### 压测产物 ###
+docs/benchmark/report*/
+docs/benchmark/result*.jtl
+docs/benchmark/tokens.csv
+docs/benchmark/load-users.sql

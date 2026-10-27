@@ -1,0 +1,48 @@
+version: "3.8"
+
+# 可选：一键启动 MySQL + Redis（本机已安装时可不使用）
+# 使用：docker compose up -d
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: gourmet-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      MYSQL_DATABASE: gourmet_recommend
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-time-zone=+08:00
+    ports:
+      - "3306:3306"
+    volumes:
+      # 表结构与演示数据已从项目移除；如需初始化，把 SQL 放到 ./docker-init/ 再取消下面两行注释
+      # - ./docker-init/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # - ./docker-init/02-data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+      - gourmet-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: gourmet-redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-123456}", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - gourmet-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-123456}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  gourmet-mysql-data:
+  gourmet-redis-data:

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>商家后台 · 寻味</title>
+  <link rel="stylesheet" href="/css/app.css?v=20261028">
+</head>
+<body>
+<header id="nav" class="site"></header>
+<div class="container" style="padding-top:22px">
+  <div class="page-title"><h1 id="shopName">商家后台</h1><span class="muted small" id="shopMeta"></span></div>
+  <div class="stat-grid" id="stats"></div>
+  <div class="layout" style="margin-top:18px">
+    <aside class="side card" id="side">
+      <button data-tab="shop" class="active">店铺资料</button>
+      <button data-tab="dishes">菜品管理</button>
+      <button data-tab="coupons">优惠券</button>
+      <button data-tab="reviews">用户评价</button>
+      <button data-tab="messages">消息通知</button>
+    </aside>
+    <main class="card pad" id="panel"></main>
+  </div>
+</div>
+<footer class="site">
+  <div class="container row wrap">
+    <span>© 2026 寻味 · 美食推荐系统</span>
+    <span class="spacer"></span>
+    <a class="muted" href="/index.html">首页</a><span class="muted">·</span>
+    <a class="muted" href="/coupons.html">领券中心</a><span class="muted">·</span>
+    <a class="muted" href="/notes.html">探店笔记</a><span class="muted">·</span>
+    <a class="muted" href="/swagger-ui.html" target="_blank">接口文档</a>
+  </div>
+</footer>
+<script src="/js/api.js?v=20261028"></script>
+<script src="/js/ui.js?v=20261028"></script>
+<script src="/js/nav.js?v=20261028"></script>
+<script src="/js/console.js?v=20261028"></script>
+</body>
+</html>

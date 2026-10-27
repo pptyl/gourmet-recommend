@@ -1,0 +1,125 @@
+server:
+  port: 8080
+  tomcat:
+    threads:
+      max: 500
+      min-spare: 50
+    accept-count: 2000
+    max-connections: 20000
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: gourmet-recommend
+  profiles:
+    # dev = H2 内存库，开箱即用；切换 MySQL：--spring.profiles.active=mysql
+    active: dev
+  jackson:
+    time-zone: GMT+8
+    default-property-inclusion: always
+    serialization:
+      write-dates-as-timestamps: false
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 50MB
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # Redis 6+ ACL 用户名；留空表示使用 default 用户（单密码模式）
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 64
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3000ms
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+  global-config:
+    banner: false
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+logging:
+  level:
+    root: info
+    com.gourmet: info
+
+app:
+  jwt:
+    # 生产环境务必通过环境变量覆盖
+    secret: ${JWT_SECRET:gourmet-recommend-jwt-secret-key-for-demo-please-change-in-prod}
+    expire-minutes: 720
+    header: Authorization
+  upload:
+    path: ${UPLOAD_PATH:./uploads}
+    url-prefix: /uploads
+    allowed-ext: jpg,jpeg,png,gif,webp,bmp
+    max-size-mb: 10
+  security:
+    # 免登录访问路径（Ant 风格）
+    permit-all:
+      - /api/user/login
+      - /api/user/register
+      - /api/merchant/login
+      - /api/merchant/apply
+      - /api/admin/login
+      - /api/merchant/page
+      - /api/merchant/*/detail
+      - /api/merchant/*/dishes
+      - /api/merchant/*/reviews
+      - /api/dish/page
+      - /api/dish/detail/*
+      - /api/review/merchant/*
+      - /api/note/page
+      - /api/note/detail/*
+      - /api/coupon/merchant/*
+      - /api/coupon/center
+      - /api/coupon/detail/*
+      - /api/recommend/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /v3/api-docs/**
+      - /webjars/**
+      - /uploads/**
+      - /h2-console/**
+      - /error
+      - /favicon.ico
+  seckill:
+    # 关闭后走数据库乐观锁兜底方案（无 Redis 也能跑通）
+    redis-enabled: true
+    stock-key-prefix: "seckill:stock:"
+    user-key-prefix: "seckill:users:"
+    rank-cache-key: "cache:hot-rank"
+    rank-cache-seconds: 300
+    # 是否启用用户级幂等锁（Lua 已保证一人一单）
+    user-lock-enabled: ${SECKILL_USER_LOCK:false}
+    coupon-cache-seconds: 3
+    batch-size: 500

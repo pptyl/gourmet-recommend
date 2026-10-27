@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>寻味 · 美食推荐</title>
+  <link rel="stylesheet" href="/css/app.css?v=20261028">
+</head>
+<body>
+<header id="nav" class="site"></header>
+
+<div class="container">
+  <section class="hero">
+    <h1>今天想吃点什么？<br>让口味偏好替你决定</h1>
+    <p>川菜、江浙菜、粤菜、日料…按菜系、地区、评分筛选，看看本地人都在吃什么。</p>
+    <form class="searchbar" id="searchForm">
+      <input id="kw" placeholder="搜索店名、菜品或地址，例如：水煮鱼">
+      <button class="btn btn-primary" type="submit">搜索</button>
+    </form>
+    <div class="hero-tags" id="quickTags"></div>
+    <div style="margin-top:16px;position:relative">
+      <a class="btn" href="/coupons.html" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.45)">
+        🎫 领券中心
+      </a>
+      <a class="btn" href="/notes.html" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.45);margin-left:8px">
+        📝 探店笔记
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>为你推荐</h2>
+      <span class="sub" id="recSub">根据口味偏好与浏览行为智能匹配</span>
+      <div class="spacer"></div>
+      <a class="btn btn-ghost btn-sm" id="tasteLink" href="/login.html">完善口味偏好</a>
+    </div>
+    <div class="grid merchants rec" id="recList"></div>
+  </section>
+
+  <section class="section" id="rank">
+    <div class="section-head">
+      <h2>热门榜单</h2>
+      <span class="sub">综合评分 · 收藏量 · 评价数 · 浏览量</span>
+    </div>
+    <div class="grid four" id="rankList"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>全部商家</h2>
+      <span class="sub" id="listSub"></span>
+    </div>
+    <div class="card pad" style="margin-bottom:16px">
+      <div class="row wrap">
+        <select class="select" id="fArea" style="width:150px"><option value="">全部地区</option></select>
+        <select class="select" id="fCategory" style="width:140px"><option value="">全部菜系</option></select>
+        <select class="select" id="fScore" style="width:140px">
+          <option value="">全部评分</option>
+          <option value="4.5">4.5 分以上</option>
+          <option value="4">4.0 分以上</option>
+          <option value="3.5">3.5 分以上</option>
+        </select>
+        <select class="select" id="fSort" style="width:150px">
+          <option value="score">按评分排序</option>
+          <option value="favorite">按收藏量排序</option>
+          <option value="hot">按热度排序</option>
+          <option value="new">最新入驻</option>
+        </select>
+        <button class="btn btn-primary" id="btnFilter">筛选</button>
+        <button class="btn btn-ghost" id="btnReset">重置</button>
+      </div>
+    </div>
+    <div class="grid merchants" id="list"></div>
+    <div class="pager" id="pager"></div>
+  </section>
+</div>
+
+<footer class="site">
+  <div class="container row wrap">
+    <span>© 2026 寻味 · 美食推荐系统</span>
+    <span class="spacer"></span>
+    <a class="muted" href="/swagger-ui.html" target="_blank">接口文档</a>
+    <span class="muted">·</span>
+    <a class="muted" href="/coupons.html">领券中心</a>
+    <span class="muted">·</span>
+    <a class="muted" href="/notes.html">探店笔记</a>
+  </div>
+</footer>
+
+<script src="/js/api.js?v=20261028"></script>
+<script src="/js/ui.js?v=20261028"></script>
+<script src="/js/nav.js?v=20261028"></script>
+<script src="/js/home.js?v=20261028"></script>
+</body>
+</html>
