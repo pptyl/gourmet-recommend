@@ -110,9 +110,13 @@ IDEA 里确认一次：`Settings → Build, Execution, Deployment → Build Tool
 
 ### 2. 启动（MySQL，默认）
 
-先确保 MySQL 已运行（`D:\mysql8\start-mysql.bat`），`gourmet_recommend` 库已存在；换机器时用根目录备份恢复：
+先确保 MySQL 已运行（`D:\mysql8\start-mysql.bat`），`gourmet_recommend` 库已存在。
+换机器或需要备份时自行导出/导入：
 
 ```bash
+# 备份（结构 + 数据）
+mysqldump -uroot -p123456 --databases gourmet_recommend > gourmet_recommend.sql
+# 恢复
 mysql -uroot -p123456 < gourmet_recommend.sql
 ```
 
@@ -493,7 +497,7 @@ redis-cli -h 127.0.0.1 -p 6380 -a 你的密码 SMEMBERS seckill:users:1
 > 抢券后 `DBSIZE=3`、`seckill:stock:6=0`、`seckill:users:6={1,2}`、`cache:hot-rank` TTL≈300s、
 > `lock:cache:hot-rank` 已释放，与本地实例表现一致。
 
-> 说明：MySQL 8.0.29 已在本机实际运行并完成全部链路验证；16 张表与演示数据由 `gourmet_recommend.sql` 备份保障。
+> 说明：MySQL 8.0.29 已在本机实际运行并完成全部链路验证；16 张表与演示数据由本机 MySQL 直接维护，项目不再内置 dump 文件，备份用 `mysqldump`。
 
 ---
 
