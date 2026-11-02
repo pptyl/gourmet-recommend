@@ -115,9 +115,9 @@ IDEA 里确认一次：`Settings → Build, Execution, Deployment → Build Tool
 
 ```bash
 # 备份（结构 + 数据）
-mysqldump -uroot -p123456 --databases gourmet_recommend > gourmet_recommend.sql
+mysqldump -uroot -p123456 --databases gourmet_recommend > backup.sql
 # 恢复
-mysql -uroot -p123456 < gourmet_recommend.sql
+mysql -uroot -p123456 < backup.sql
 ```
 
 运行 `com.gourmet.GourmetApplication`，默认激活 `mysql` 环境：
