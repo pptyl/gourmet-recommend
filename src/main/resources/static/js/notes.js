@@ -31,7 +31,7 @@ const NotesPage = {
           const cover = n.coverImage || (n.imageList || [])[0];
           return `
             <article class="card" style="overflow:hidden;cursor:pointer" data-id="${n.id}">
-              <div style="height:170px;background:linear-gradient(135deg,#ffe8cc,#ffc078);display:grid;place-items:center;font-size:40px;color:#fff">
+              <div style="height:170px;background:linear-gradient(135deg,#bae6fd,#38bdf8);display:grid;place-items:center;font-size:40px;color:#fff">
                 ${cover ? `<img src="${UI.esc(cover)}" style="width:100%;height:100%;object-fit:cover" alt="">` : '📝'}
               </div>
               <div class="pad">
