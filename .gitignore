@@ -17,8 +17,3 @@ uploads/
 logs/
 .DS_Store
 
-### 压测产物 ###
-docs/benchmark/report*/
-docs/benchmark/result*.jtl
-docs/benchmark/tokens.csv
-docs/benchmark/load-users.sql

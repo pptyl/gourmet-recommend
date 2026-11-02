@@ -124,7 +124,7 @@ IDEA 里确认一次：`Settings → Build, Execution, Deployment → Build Tool
 ### 3. 切换 MySQL
 
 > 本机 MySQL 的 `gourmet_recommend` 库已经初始化完成（16 张表 + 演示数据），项目内不再保留 MySQL 初始化脚本；
-> 完整备份（结构 + 数据）见 `docs/db/gourmet_recommend.sql`，可用 IDEA 直接打开查看，也可用 mysql < docs/db/gourmet_recommend.sql 恢复。
+> 完整备份（结构 + 数据）见项目根目录 `gourmet_recommend.sql`，可直接打开查看，也可用 `mysql < gourmet_recommend.sql` 恢复。
 
 ```bash
 # 启动时指定 mysql 环境（按需修改账号密码）
@@ -567,13 +567,6 @@ redis-cli -h 127.0.0.1 -p 6380 -a 你的密码 SMEMBERS seckill:users:1
 | 人均消费 / 菜品价格 | 必须 ≥ 0（菜品 > 0） |
 | 优惠券 | 减免金额 ≤ 满减门槛、库存 ≥ 1、结束时间晚于开始时间 |
 
-| 商家入驻 | 用户注册（菜系多选） |
-| --- | --- |
-| ![入住](docs/screenshots/08-merchant-apply.png) | ![注册](docs/screenshots/09-register.png) |
-
-![笔记点赞](docs/screenshots/10-note-like.png)
-
-![领券中心](docs/screenshots/11-coupon-center.png)
 
 ### 修改前端后如何生效
 
@@ -588,21 +581,7 @@ java -jar target/gourmet-recommend.jar
 java -jar target/gourmet-recommend.jar \
   --spring.web.resources.static-locations=file:src/main/resources/static/,classpath:/static/
 ```
-### 界面预览
 
-截图位于 `docs/screenshots/`，可直接用于课程报告。
-
-| 首页（推荐 / 榜单 / 筛选） | 商家详情 |
-| --- | --- |
-| ![首页](docs/screenshots/01-home.png) | ![商家详情](docs/screenshots/02-merchant-detail.png) |
-
-| 登录 / 注册 / 入驻 | 探店笔记 |
-| --- | --- |
-| ![登录](docs/screenshots/03-login.png) | ![笔记](docs/screenshots/04-notes.png) |
-
-| 个人中心 | 商家后台 | 平台后台 |
-| --- | --- | --- |
-| ![个人中心](docs/screenshots/05-profile.png) | ![商家后台](docs/screenshots/06-merchant-console.png) | ![平台后台](docs/screenshots/07-admin.png) |
 ---
 
 ## 附录 B：抢券架构（第三版 Redisson 锁 + 第四版 MQ 异步削峰）
@@ -656,7 +635,7 @@ java -jar target/gourmet-recommend.jar \
 | 数据一致性 | 领取记录 5 = 总库存 5，数据库剩余 0，Redis 库存 0，消费组 pending 0 |
 | 降级链路 | 停掉 Redis 再抢券仍成功（数据库乐观锁），库存正确递减 |
 
-复现脚本：`docs/benchmark/seckill-test.mjs`（先启动服务，再执行 `node docs/benchmark/seckill-test.mjs`）。
+复现方式见「附录 C：性能优化与压测」。
 ### 优惠券核销（一券一码）
 
 领券成功后，`user_coupon` 会同时生成一个 **12 位唯一核销码**（`redeem_code`，唯一索引）：
@@ -713,6 +692,6 @@ java -jar target/gourmet-recommend.jar \
 | 数据一致性 | 6000 请求 → 恰好 5000 条领取记录，库存 0，**无超卖** |
 | 对照：开启用户级 Redisson 锁 | 607 req/s，平均 403 ms |
 
-登录接口受 BCrypt（~70ms/次，CPU 密集）限制，不适合作为 QPS 指标；高并发压测用预生成 JWT（`docs/benchmark/gen-load-users.mjs`），RT 只包含鉴权 + Redis 扣减 + 入队。
+登录接口受 BCrypt（~70ms/次，CPU 密集）限制，不适合作为 QPS 指标；高并发压测用预生成的 JWT，RT 只包含鉴权 + Redis 扣减 + 入队。
 
-压测脚本与 HTML 报告在 `docs/benchmark/`（`report-steady/index.html`），压测数据已清理。
+压测数据已清理。
