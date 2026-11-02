@@ -2,10 +2,10 @@
 
 面向 **普通用户 / 入驻商家 / 平台管理员** 三类角色的美食推荐平台后端，覆盖商家浏览、菜品管理、UGC 探店笔记、个性化智能推荐、评价收藏、限时优惠券抢购、消息通知与数据统计等完整业务。
 
-- 后端：Spring Boot 3.2.5 + MyBatis-Plus 3.5.7 + MySQL 8 / H2 + Redis + JWT
+- 后端：Spring Boot 3.2.5 + MyBatis-Plus 3.5.7 + MySQL 8 + Redis + JWT
 - 文档：Swagger / OpenAPI 3（`/swagger-ui.html`）
 - 规模：133 个 Java 源文件（含集成测试）、16 张表、98 个 REST 接口、14 个 Controller
-- 可直接用 IntelliJ IDEA 打开，默认 `dev` 环境使用 H2 内存库，**无需安装 MySQL 即可启动**
+- 可直接用 IntelliJ IDEA 打开，默认连接本机 MySQL 8（库已初始化，启动即用）
 
 ---
 
@@ -15,7 +15,7 @@
 | --- | --- |
 | 基础框架 | Spring Boot 3.2.5（Java 17） |
 | 持久层 | MyBatis-Plus 3.5.7（分页插件、逻辑删除、自动填充、防全表更新） |
-| 数据库 | MySQL 8.x（生产）/ H2 内存库（开发，MySQL 兼容模式） |
+| 数据库 | MySQL 8.x |
 | 缓存 / 秒杀 | Spring Data Redis + Lettuce，Redisson 分布式锁，Lua 原子扣减，Redis Stream 异步削峰 |
 | 认证鉴权 | JWT（jjwt 0.11.5）+ 自定义拦截器 + `@RequireRole` 注解 |
 | 密码加密 | BCrypt（spring-security-crypto） |
@@ -55,12 +55,9 @@ gourmet-recommend
     │   ├── service + service/impl    # 13 个业务 Service
     │   └── vo/                       # 7 个返回视图对象
     └── resources
-        ├── application.yml           # 公共配置
-        ├── application-dev.yml       # H2 开发环境（默认）
+        ├── application.yml           # 公共配置（默认 mysql）
         ├── application-mysql.yml     # MySQL 环境
         ├── application-prod.yml      # 生产环境（环境变量注入）
-        ├── db/h2-schema.sql          # H2 建表
-        ├── db/h2-data.sql            # H2 初始化数据
         ├── lua/seckill.lua           # 秒杀原子脚本
         └── static/                   # 前端页面（html / css / js）
             ├── index.html            # 首页：推荐 + 榜单 + 商家筛选
@@ -111,26 +108,22 @@ IDEA 里确认一次：`Settings → Build, Execution, Deployment → Build Tool
 `File → Open → 选择 gourmet-recommend 目录`，等待 Maven 依赖下载完成。
 项目 JDK 选择 **17**（`File → Project Structure → SDK`）。
 
-### 2. 直接运行（H2，零依赖）
+### 2. 启动（MySQL，默认）
 
-运行 `com.gourmet.GourmetApplication`，默认激活 `dev` 环境：
+先确保 MySQL 已运行（`D:\mysql8\start-mysql.bat`），`gourmet_recommend` 库已存在；换机器时用根目录备份恢复：
+
+```bash
+mysql -uroot -p123456 < gourmet_recommend.sql
+```
+
+运行 `com.gourmet.GourmetApplication`，默认激活 `mysql` 环境：
 
 - 服务地址：<http://localhost:8080>
 - Swagger 文档：<http://localhost:8080/swagger-ui.html>
-- H2 控制台：<http://localhost:8080/h2-console>（JDBC URL：`jdbc:h2:mem:gourmet`，用户 `sa`，密码空）
 
-第一次启动会自动执行 `db/h2-schema.sql` 与 `db/h2-data.sql`，自带 **25 家商家、67 道菜、40 条评价、18 篇笔记、13 张优惠券、12 个用户** 以及点赞、收藏、心愿单等演示数据。
+自带 **45 家商家、127 道菜、80 条评价、28 篇笔记、24 张优惠券、20 个用户** 以及点赞、收藏、心愿单等演示数据。
 
-### 3. 切换 MySQL
-
-> 本机 MySQL 的 `gourmet_recommend` 库已经初始化完成（16 张表 + 演示数据），项目内不再保留 MySQL 初始化脚本；
-> 完整备份（结构 + 数据）见项目根目录 `gourmet_recommend.sql`，可直接打开查看，也可用 `mysql < gourmet_recommend.sql` 恢复。
-
-```bash
-# 启动时指定 mysql 环境（按需修改账号密码）
-mvn spring-boot:run -Dspring-boot.run.profiles=mysql
-# 或在 IDEA 中设置 Active profiles = mysql
-```
+### 3. 数据库连接配置
 
 `application-mysql.yml` 支持环境变量：`MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_DB`、`MYSQL_USER`、`MYSQL_PASSWORD`。
 
@@ -153,7 +146,7 @@ phpStudy 自带的是 MySQL **5.5.53（2015 年，已停止维护）**，与 Con
 
 ### 4. 连接虚拟机内的 Redis
 
-`dev` 环境默认指向虚拟机 **`192.168.31.63:6379`**（单密码模式，密码已写入 `application-dev.yml`，仅用于本地开发）。
+`mysql` 环境默认指向虚拟机 **`192.168.31.63:6379`**（单密码模式，密码通过环境变量 `REDIS_PASSWORD` 注入，不写进代码）。
 Redis 在别处或使用 Redis 6+ ACL 账号时，用环境变量覆盖：
 
 ```bash
@@ -452,7 +445,7 @@ raw = 综合评分 × 12
 
 ## 八、已验证的功能
 
-本项目已完成编译与运行验证（H2 环境），下列链路均实测通过：
+本项目已完成编译与运行验证（MySQL 环境），下列链路均实测通过：
 
 - 注册 / 登录 / 改密 / 口味偏好 / 个人中心；
 - 商家分页与筛选、商家详情（浏览量 +1、收藏标记）、旗下菜品；
@@ -500,7 +493,7 @@ redis-cli -h 127.0.0.1 -p 6380 -a 你的密码 SMEMBERS seckill:users:1
 > 抢券后 `DBSIZE=3`、`seckill:stock:6=0`、`seckill:users:6={1,2}`、`cache:hot-rank` TTL≈300s、
 > `lock:cache:hot-rank` 已释放，与本地实例表现一致。
 
-> 说明：MySQL 脚本未在本机执行（本机未安装 MySQL，虚拟机也未开放 3306 端口），脚本按 MySQL 8.x 语法编写并与实体字段逐一核对；H2 版脚本已随每次启动实际执行。
+> 说明：MySQL 8.0.29 已在本机实际运行并完成全部链路验证；16 张表与演示数据由 `gourmet_recommend.sql` 备份保障。
 
 ---
 

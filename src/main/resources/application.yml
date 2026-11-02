@@ -16,8 +16,8 @@ spring:
   application:
     name: gourmet-recommend
   profiles:
-    # dev = H2 内存库，开箱即用；切换 MySQL：--spring.profiles.active=mysql
-    active: dev
+    # 默认连 MySQL；如需临时切换可用 --spring.profiles.active=xxx
+    active: mysql
   jackson:
     time-zone: GMT+8
     default-property-inclusion: always
