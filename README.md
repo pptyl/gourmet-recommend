@@ -16,7 +16,7 @@
 | 基础框架 | Spring Boot 3.2.5（Java 17） |
 | 持久层 | MyBatis-Plus 3.5.7（分页插件、逻辑删除、自动填充、防全表更新） |
 | 数据库 | MySQL 8.x |
-| 缓存 / 秒杀 | Spring Data Redis + Lettuce，Redisson 分布式锁，Lua 原子扣减，Redis Stream 异步削峰 |
+| 缓存 / 秒杀 | Spring Data Redis + Lettuce，Lua 原子扣减，Redis Stream 异步落库（可选 Redisson 用户锁） |
 | 认证鉴权 | JWT（jjwt 0.11.5）+ 自定义拦截器 + `@RequireRole` 注解 |
 | 密码加密 | BCrypt（spring-security-crypto） |
 | 接口文档 | springdoc-openapi 2.3.0 |
@@ -311,7 +311,7 @@ java -jar target/gourmet-recommend.jar --spring.profiles.active=mysql
 | GET | `/api/coupon/center` | 领券中心：全平台可领取 / 即将开始（公开，分页） |
 | GET | `/api/coupon/merchant/{merchantId}` | 商家进行中的券（公开） |
 | GET | `/api/coupon/detail/{id}` | 券详情：库存、倒计时、是否已领（公开） |
-| POST | `/api/coupon/{id}/seckill` | **限时抢券**：Redisson 锁 + Lua 原子扣减 + Stream 异步落库，返回排队状态 |
+| POST | `/api/coupon/{id}/seckill` | **限时抢券**：Lua 原子扣减 + 异步落库，返回排队状态 |
 | GET | `/api/coupon/{id}/seckill/status` | 查询抢券处理状态（QUEUED / DONE） |
 | GET | `/api/coupon/my?status=` | 我的券包：0 未使用 / 1 已使用 / 2 已过期 |
 | POST | `/api/coupon/redeem` | **商家凭 12 位核销码核销**（一券一码，核销即失效） |
@@ -391,16 +391,14 @@ raw = 综合评分 × 12
 - 相似推荐按「同菜系 → 人均价差 → 评分」排序，同菜系不足时用评分相近商家补齐；
 - 排行榜：`收藏×3 + 评价×2 + 浏览×0.2 + 评分×10`，Redis 缓存 5 分钟并用分布式锁防击穿。
 
-### 4. 优惠券秒杀（技术亮点）
+### 4. 优惠券秒杀
 
-**三道防线：**
+- **Lua 原子脚本**（`lua/seckill.lua`）：一人一单校验 + 库存判断 + 扣减 + 记录用户，单线程原子执行；
+- **数据库兜底**：`remain_stock > 0` 条件更新 + `(user_id, coupon_id)` 唯一索引，保证最终一致；
+- **自动降级**：Redis 不可用或认证失败时切到数据库方案，业务不中断；
+- **异步落库**：成功后写 Redis Stream，消费者批量落库，接口只等 Redis 返回。
 
-1. **Redis Lua 原子脚本**（`lua/seckill.lua`）：一人一单校验 → 库存判断 → 扣减 → 记录用户，单线程原子执行，杜绝超卖与重复领取；
-2. **数据库兜底**：`update coupon set remain_stock = remain_stock - 1 where id = ? and remain_stock > 0`（乐观锁）+ `(user_id, coupon_id)` 唯一索引，保证最终一致；
-3. **自动降级**：Redis 不可用或密码错误时，自动切换到数据库方案，业务不中断；
-4. **失败补偿**：数据库落库异常时回滚 Redis 库存与用户标记。
-
-库存预热：商家发布/上架优惠券时写入 `seckill:stock:{couponId}`，并清理 `seckill:users:{couponId}`。
+库存预热：商家发券/上架时写入 `seckill:stock:{couponId}`，并清理已领用户集合。
 
 ### 5. 内容审核流
 
@@ -463,41 +461,16 @@ raw = 综合评分 × 12
 - 未登录 401、越权 403 拦截；
 - **MySQL 8.0.29（本机 `D:\mysql8`）**：`gourmet_recommend` 库已含 16 张表与演示数据；`mysql` profile 下登录、商家分页、个性化推荐、管理员总览、抢券全部正常，`recommend_log` / `user_coupon` / `message` 均能正确落库。
 
-### Redis 秒杀专项验证（真实 Redis 5.0.14 + requirepass）
+### Redis 秒杀验证（虚拟机 Redis，单密码模式）
 
-用一个临时 Redis 实例（非项目依赖）跑通完整秒杀链路，实测结果：
-
-| 场景 | 实测结果 |
+| 场景 | 结果 |
 | --- | --- |
-| 发布 2 张券 | `seckill:stock:{id}` = 2，TTL ≈ 抢购结束 + 1 天 |
-| 用户 1 第 1 次抢 | 200，Redis 库存 2 → 1，`seckill:users:{id}` 加入成员 1 |
-| 用户 1 第 2 次抢 | 409「每人限领 1 张」，库存仍为 1（Lua 提前拦截，未重复扣减） |
-| 用户 2 抢 | 200，库存 1 → 0 |
-| 用户 3 抢 | 409「手慢了」，数据库 `remain_stock` = 0 |
-| 领取记录 | 恰好 2 条，与总库存一致 |
-| 1 张券 + 两用户并发 | 1 成功、1 售罄，数据库库存 0、记录 1 条（**无超卖**） |
-| 榜单缓存 | `cache:hot-rank` 存在，TTL = 300s，二次调用 11ms |
-| 分布式锁 | 缓存重建完成后 `lock:cache:hot-rank` 已释放 |
-| 停掉 Redis 再抢券 | 200，日志提示「Redis 不可用…使用数据库乐观锁扣减库存」，库存正确递减 |
-
-复现方式：
-
-```bash
-# 任意 Redis 5+ 实例（开启 requirepass）
-# Windows: set REDIS_HOST=127.0.0.1 & set REDIS_PORT=6380 & set REDIS_PASSWORD=你的密码
-export REDIS_HOST=127.0.0.1 REDIS_PORT=6380 REDIS_PASSWORD=你的密码
-mvn spring-boot:run
-
-# 观察库存与抢购用户集合
-redis-cli -h 127.0.0.1 -p 6380 -a 你的密码 GET seckill:stock:1
-redis-cli -h 127.0.0.1 -p 6380 -a 你的密码 SMEMBERS seckill:users:1
-```
-
-> 上述结果也已在**虚拟机 Redis（`192.168.31.63:6379`，单密码模式）**上复测通过：
-> 抢券后 `DBSIZE=3`、`seckill:stock:6=0`、`seckill:users:6={1,2}`、`cache:hot-rank` TTL≈300s、
-> `lock:cache:hot-rank` 已释放，与本地实例表现一致。
-
-> 说明：MySQL 8.0.29 已在本机实际运行并完成全部链路验证；16 张表与演示数据由本机 MySQL 直接维护，项目不再内置 dump 文件，备份用 `mysqldump`。
+| 用户 1 连抢两次 | 第一次 200、库存 2→1；第二次 409「每人限领 1 张」，库存不再扣 |
+| 用户 2 抢 | 200，库存 1→0 |
+| 用户 3 抢 | 409「手慢了」，数据库 `remain_stock = 0` |
+| 1 张券两人并发 | 1 成功 1 售罄，记录 1 条，无超卖 |
+| 榜单缓存 | `cache:hot-rank` TTL 300s，二次调用 11ms |
+| 停掉 Redis 再抢券 | 200，自动降级数据库扣减，库存正确 |
 
 ---
 
@@ -581,58 +554,31 @@ java -jar target/gourmet-recommend.jar \
 
 ---
 
-## 附录 B：抢券架构（第三版 Redisson 锁 + 第四版 MQ 异步削峰）
+## 附录 B：抢券与核销
 
-### 完整链路
+### 抢券流程
 
 ```
-客户端
-  │ POST /api/coupon/{id}/seckill
-  ▼
-① 活动校验（状态 / 抢购时间窗）
-  ▼
-② Redisson 用户级幂等锁   lock:seckill:user:{couponId}:{userId}
-   tryLock(0ms, 3s)：拿不到 = 同一用户并发重复提交 → 409
-  ▼
-③ Redisson 券级库存锁     lock:seckill:stock:{couponId}
-   tryLock(200ms, 3s)：把「判断库存 + 扣减」区间串行化，跨节点不超发
-  ▼
-④ Lua 原子脚本（单线程执行，不可分割）
-   SISMEMBER 一人一单 → GET 库存 → 判断 → DECR → SADD 用户
-   返回 1 / -1 售罄 / -2 重复 / -3 未初始化
-  ▼
-⑤ 成功：XADD stream:coupon:order（requestId、userId、couponId、receiveTime）
-   接口立即返回 { queued: true, status: "QUEUED", requestId }
-  ▼
-⑥ 消费者（每 200ms，XREADGROUP COUNT 32 BLOCK 300ms）
-   批量落库：user_coupon 幂等插入 + remain_stock 原子 -1 → XACK
-  ▼
-⑦ 兜底：Redis 不可用 / Lua 异常 → 数据库乐观锁 + (user_id,coupon_id) 唯一索引
+活动校验
+  → Lua 原子扣减（一人一单校验 + 库存判断 + 扣减 + 记录用户）
+  → 写 Redis Stream 入队，接口立即返回 QUEUED
+  → 消费者批量落库（user_coupon 幂等插入 + 库存 -1 + ACK）
+  → Redis 不可用时自动降级为数据库乐观锁
 ```
 
-### 关键实现
+- Lua 脚本是「一人一单 + 扣库存」的原子保证；
+- 可选开启用户级分布式锁（`SECKILL_USER_LOCK=true`），用于同一用户并发重复提交的快速拒绝；
+- 抢券接口只做 Redis 操作，落库异步完成，RT 更低。
+
+### 相关文件
 
 | 能力 | 位置 |
 | --- | --- |
-| Redisson 客户端与锁封装（懒加载 + 启动预热 + 自动降级） | `common/redis/RedissonLockManager.java` |
-| 抢券主链路（锁 → Lua → 入队 / 落库） | `service/impl/CouponSeckillServiceImpl.java` |
-| Stream 消费者（消费组、批量、ACK、退避） | `mq/SeckillOrderConsumer.java` |
+| 抢券主链路 | `service/impl/CouponSeckillServiceImpl.java` |
+| Redis Stream 消费者 | `mq/SeckillOrderConsumer.java` |
 | Lua 脚本 | `resources/lua/seckill.lua` |
-| 异步开关与队列参数 | `app.seckill.async-enabled / stream-key / consumer-group / batch-size` |
+| 队列与开关配置 | `app.seckill.*` |
 
-### 压测结果（本机实测，10 个账号并发）
-
-| 指标 | 结果 |
-| --- | --- |
-| 10 人并发抢 5 张券 | **5 成功 / 5 售罄 / 0 超卖**，总耗时 131 ms |
-| 接口平均 RT | 86 ms（P100 129 ms） |
-| 首请求 RT | 冷启动 554 ms → Redisson 预热后 **63~97 ms** |
-| 异步落库 | 响应返回后 1.5 s 内券包可见（实测已生成 5 条记录） |
-| 重复领取 | 409「每人限领 1 张」 |
-| 数据一致性 | 领取记录 5 = 总库存 5，数据库剩余 0，Redis 库存 0，消费组 pending 0 |
-| 降级链路 | 停掉 Redis 再抢券仍成功（数据库乐观锁），库存正确递减 |
-
-复现方式见「附录 C：性能优化与压测」。
 ### 优惠券核销（一券一码）
 
 领券成功后，`user_coupon` 会同时生成一个 **12 位唯一核销码**（`redeem_code`，唯一索引）：
@@ -661,7 +607,7 @@ java -jar target/gourmet-recommend.jar \
 校验命令：`mvn dependency:tree -Dincludes=org.redisson:*` 应输出 `org.redisson:redisson:jar:3.27.2:compile`。
 ---
 
-## 附录 C：性能优化与压测（实测 1957 req/s）
+## 附录 C：性能优化与压测
 
 ### 优化清单
 
@@ -672,11 +618,11 @@ java -jar target/gourmet-recommend.jar \
 | Hikari 20 → 50，Lettuce 16 → 64 | 异步落库与 Redis 命令不再排队 |
 | Caffeine 本地缓存优惠券（3s） | 抢券入口不再每次查库 |
 | Redis 可用性探测缓存 2s | 去掉每请求 PING |
-| 去掉券级 Redisson 锁 | Lua 已原子，少一次 Redis 往返与锁竞争 |
+| 去掉券级锁 | Lua 已原子，少一次 Redis 往返与锁竞争 |
 | 去掉每请求 `hasKey` 探测 | 仅在 Lua 返回 -3 时补库存并重试 |
 | 每请求 INFO 日志 → DEBUG | 高并发下日志是隐藏瓶颈 |
 | 消费者批量 ACK + 连读 20 批（每批 500） | 6000 订单数秒内落库 |
-| 用户级锁默认关闭 | Lua SISMEMBER 保证一人一单；`SECKILL_USER_LOCK=true` 可开双保险 |
+| 用户级锁默认关闭 | Lua SISMEMBER 保证一人一单；需要时设 `SECKILL_USER_LOCK=true` |
 
 ### 实测（本机 16 核，300 线程 × 20 轮 = 6000 请求，库存 5000）
 
@@ -687,7 +633,7 @@ java -jar target/gourmet-recommend.jar \
 | P50 / P90 / P95 / P99 | 71 / 151 / 196 / 258 ms |
 | 错误率 | 0% |
 | 数据一致性 | 6000 请求 → 恰好 5000 条领取记录，库存 0，**无超卖** |
-| 对照：开启用户级 Redisson 锁 | 607 req/s，平均 403 ms |
+| 对照：开启用户级锁 | 607 req/s，平均 403 ms |
 
 登录接口受 BCrypt（~70ms/次，CPU 密集）限制，不适合作为 QPS 指标；高并发压测用预生成的 JWT，RT 只包含鉴权 + Redis 扣减 + 入队。
 
